@@ -242,7 +242,12 @@ void Clockface::scrollText(const String& text, int x, int y, int maxWidth) {
   
   // Calculate which part of the text to show
   String displayText = text;
-  if (scrollOffset > 0) {
+  
+  // Show first 5 characters immediately, then scroll from there
+  if (scrollOffset == 0) {
+    // Show first 5 characters
+    displayText = text.substring(0, min(5, (int)text.length()));
+  } else if (scrollOffset > 0) {
     if (scrollOffset < text.length()) {
       displayText = text.substring(scrollOffset);
     } else {
