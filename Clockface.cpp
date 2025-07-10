@@ -7,6 +7,8 @@ EventBus eventBus;
 
 unsigned long lastMillis = 0;
 unsigned long lastWeatherUpdate = 0;
+unsigned long lastScrollUpdate = 0;
+int scrollOffset = 0;
 
 char hInWords[20];
 char mInWords[20]; 
@@ -146,39 +148,96 @@ void Clockface::updateWeather()
   
   WeatherData weather = CWWeatherService::getInstance()->getCurrentWeather();
   
-  if (weather.isValid && !weather.condition.isEmpty()) {
-    // Display weather icon at position (10, 55)
-    const unsigned short* weatherIcon = nullptr;
-    
-    if (weather.condition == "clear") {
-      weatherIcon = WEATHER_CLEAR;
-    } else if (weather.condition == "cloudy" || weather.condition == "partly" || weather.condition == "overcast") {
-      weatherIcon = WEATHER_CLOUDY;
-    } else if (weather.condition == "rain" || weather.condition == "drizzle") {
-      weatherIcon = WEATHER_RAIN;
-    } else if (weather.condition == "thunder") {
-      weatherIcon = WEATHER_THUNDER;
-    } else if (weather.condition == "snow") {
-      weatherIcon = WEATHER_SNOW;
-    } else if (weather.condition == "fog") {
-      weatherIcon = WEATHER_FOG;
-    }
-    
-    if (weatherIcon) {
-      Locator::getDisplay()->drawRGBBitmap(10, 55, weatherIcon, 8, 8);
-    }
-    
-    // Display weather text next to the icon
-    Locator::getDisplay()->setFont(&small4pt7b);
-    Locator::getDisplay()->setCursor(20, 62);
-    Locator::getDisplay()->setTextColor(0xffff);
-    
-    // Truncate weather condition to fit in available space
-    String displayText = weather.condition;
-    if (displayText.length() > 6) {
-      displayText = displayText.substring(0, 6);
-    }
-    
-    Locator::getDisplay()->print(displayText);
+  // Determine what to display based on weather status
+  String displayText = "";
+  const unsigned short* weatherIcon = nullptr;
+  
+  switch (weather.status) {
+    case WEATHER_OK:
+      if (weather.isValid && !weather.condition.isEmpty()) {
+        displayText = weather.condition;
+        
+        // Set weather icon based on condition
+        if (weather.condition == "clear") {
+          weatherIcon = WEATHER_CLEAR;
+        } else if (weather.condition == "cloudy" || weather.condition == "partly" || weather.condition == "overcast") {
+          weatherIcon = WEATHER_CLOUDY;
+        } else if (weather.condition == "rain" || weather.condition == "drizzle") {
+          weatherIcon = WEATHER_RAIN;
+        } else if (weather.condition == "thunder") {
+          weatherIcon = WEATHER_THUNDER;
+        } else if (weather.condition == "snow") {
+          weatherIcon = WEATHER_SNOW;
+        } else if (weather.condition == "fog") {
+          weatherIcon = WEATHER_FOG;
+        }
+      }
+      break;
+      
+    case WEATHER_CONNECTING:
+      displayText = "...";
+      weatherIcon = WEATHER_CLOUDY; // Use cloudy icon as placeholder
+      break;
+      
+    case WEATHER_ERROR:
+    default:
+      displayText = "error";
+      weatherIcon = WEATHER_CLOUDY; // Use cloudy icon as placeholder
+      break;
   }
+  
+  // Display weather icon
+  if (weatherIcon) {
+    Locator::getDisplay()->drawRGBBitmap(10, 55, weatherIcon, 8, 8);
+  }
+  
+  // Display weather text with scrolling if needed
+  if (!displayText.isEmpty()) {
+    scrollText(displayText, 20, 62, 44); // 44 pixels max width (64 - 20)
+  }
+}
+
+void Clockface::scrollText(const String& text, int x, int y, int maxWidth) {
+  Locator::getDisplay()->setFont(&small4pt7b);
+  Locator::getDisplay()->setTextColor(0xffff);
+  
+  // Calculate text width
+  uint16_t textWidth, h = 0;
+  int16_t x1, y1 = 0;
+  Locator::getDisplay()->getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &h);
+  
+  // If text fits within maxWidth, display normally
+  if (textWidth <= maxWidth) {
+    Locator::getDisplay()->setCursor(x, y);
+    Locator::getDisplay()->print(text);
+    scrollOffset = 0; // Reset scroll offset
+    return;
+  }
+  
+  // Text is too long, implement scrolling
+  if (millis() - lastScrollUpdate >= 300) { // Scroll every 300ms for better readability
+    scrollOffset++;
+    if (scrollOffset > text.length() + 5) { // Add some padding and pause at end
+      scrollOffset = 0;
+    }
+    lastScrollUpdate = millis();
+  }
+  
+  // Clear the text area
+  Locator::getDisplay()->fillRect(x, y - h, maxWidth, h, 0x0000);
+  
+  // Calculate which part of the text to show
+  String displayText = text;
+  if (scrollOffset > 0) {
+    if (scrollOffset < text.length()) {
+      displayText = text.substring(scrollOffset);
+    } else {
+      // Show beginning of text when we reach the end
+      displayText = text.substring(0, scrollOffset - text.length());
+    }
+  }
+  
+  // Display the text
+  Locator::getDisplay()->setCursor(x, y);
+  Locator::getDisplay()->print(displayText);
 }

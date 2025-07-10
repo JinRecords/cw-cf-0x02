@@ -31,6 +31,7 @@ class Clockface: public IClockface {
     void updateDate();
     void updateTemperature();
     void updateWeather();
+    void scrollText(const String& text, int x, int y, int maxWidth);
 
   public:
     Clockface(Adafruit_GFX* display);
