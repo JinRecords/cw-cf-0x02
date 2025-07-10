@@ -181,6 +181,13 @@ void Clockface::updateWeather()
       
     case WEATHER_ERROR:
     default:
+      // Check if we're still in startup retry mode
+      static unsigned long lastErrorCheck = 0;
+      if (millis() - lastErrorCheck >= 1000) { // Check every second
+        lastErrorCheck = millis();
+        // The weather service will handle retries internally
+        // We just show "error" until it succeeds
+      }
       displayText = "error";
       weatherIcon = WEATHER_CLOUDY; // Use cloudy icon as placeholder
       break;
