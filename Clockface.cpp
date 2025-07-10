@@ -6,6 +6,7 @@ const char* FORMAT_TWO_DIGITS = "%02d";
 EventBus eventBus;
 
 unsigned long lastMillis = 0;
+unsigned long lastWeatherUpdate = 0;
 
 char hInWords[20];
 char mInWords[20]; 
@@ -46,9 +47,11 @@ void Clockface::update()
       updateDate();    
     }
 
-    // if (_dateTime->getMinute() % 15 == 0 && _dateTime->getSecond() == 0) {
-    //   updateTemperature();
-    // }
+    // Update weather every 5 minutes
+    if (millis() - lastWeatherUpdate >= 300000) {
+      updateWeather();
+      lastWeatherUpdate = millis();
+    }
     
     lastMillis = millis();
   }  
@@ -80,6 +83,9 @@ void Clockface::updateTime()
   } else {
     Locator::getDisplay()->fillRect(1, 55, 8, 8, 0x0000);
   }
+  
+  // Display weather condition next to WiFi icon
+  updateWeather();
 }
 
 void Clockface::updateDate() 
@@ -131,4 +137,48 @@ void Clockface::updateTemperature()
   
   Locator::getDisplay()->drawRGBBitmap(12, 55, MAIL, 8, 8);
   Locator::getDisplay()->drawRGBBitmap(55, 55, WEATHER_CLOUDY_SUN, 8, 8);
+}
+
+void Clockface::updateWeather() 
+{
+  // Clear the area next to WiFi icon (from x=10 to x=64, y=55 to y=63)
+  Locator::getDisplay()->fillRect(10, 55, 54, 8, 0x0000);
+  
+  WeatherData weather = CWWeatherService::getInstance()->getCurrentWeather();
+  
+  if (weather.isValid && !weather.condition.isEmpty()) {
+    // Display weather icon at position (10, 55)
+    const unsigned short* weatherIcon = nullptr;
+    
+    if (weather.condition == "clear") {
+      weatherIcon = WEATHER_CLEAR;
+    } else if (weather.condition == "cloudy" || weather.condition == "partly" || weather.condition == "overcast") {
+      weatherIcon = WEATHER_CLOUDY;
+    } else if (weather.condition == "rain" || weather.condition == "drizzle") {
+      weatherIcon = WEATHER_RAIN;
+    } else if (weather.condition == "thunder") {
+      weatherIcon = WEATHER_THUNDER;
+    } else if (weather.condition == "snow") {
+      weatherIcon = WEATHER_SNOW;
+    } else if (weather.condition == "fog") {
+      weatherIcon = WEATHER_FOG;
+    }
+    
+    if (weatherIcon) {
+      Locator::getDisplay()->drawRGBBitmap(10, 55, weatherIcon, 8, 8);
+    }
+    
+    // Display weather text next to the icon
+    Locator::getDisplay()->setFont(&small4pt7b);
+    Locator::getDisplay()->setCursor(20, 62);
+    Locator::getDisplay()->setTextColor(0xffff);
+    
+    // Truncate weather condition to fit in available space
+    String displayText = weather.condition;
+    if (displayText.length() > 6) {
+      displayText = displayText.substring(0, 6);
+    }
+    
+    Locator::getDisplay()->print(displayText);
+  }
 }

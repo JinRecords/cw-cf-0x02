@@ -18,6 +18,8 @@
 // Commons
 #include "IClockface.h"
 #include "Icons.h"
+#include "CWWeatherService.h"
+#include "WeatherIcons.h"
 
 
 class Clockface: public IClockface {
@@ -28,6 +30,7 @@ class Clockface: public IClockface {
     void updateTime();
     void updateDate();
     void updateTemperature();
+    void updateWeather();
 
   public:
     Clockface(Adafruit_GFX* display);

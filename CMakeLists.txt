@@ -11,6 +11,6 @@ endif()
 idf_component_register(
                        INCLUDE_DIRS ${INCLUDE_DIRS}
                        SRC_DIRS ${SRC_DIRS}
-                       REQUIRES arduino Adafruit-GFX-Library cw-gfx-engine cw-commons
+                       REQUIRES arduino Adafruit-GFX-Library cw-gfx-engine cw-commons ArduinoJson
                        )
 project(cw-cf-0x02)
