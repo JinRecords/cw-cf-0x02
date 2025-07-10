@@ -49,11 +49,14 @@ void Clockface::update()
       updateDate();    
     }
 
-    // Update weather every 5 minutes
+    // Update weather data every 5 minutes
     if (millis() - lastWeatherUpdate >= 300000) {
-      updateWeather();
+      updateWeatherData();
       lastWeatherUpdate = millis();
     }
+    
+    // Update weather display continuously for smooth scrolling
+    updateWeatherDisplay();
     
     lastMillis = millis();
   }  
@@ -85,9 +88,6 @@ void Clockface::updateTime()
   } else {
     Locator::getDisplay()->fillRect(1, 55, 8, 8, 0x0000);
   }
-  
-  // Display weather condition next to WiFi icon
-  updateWeather();
 }
 
 void Clockface::updateDate() 
@@ -141,7 +141,14 @@ void Clockface::updateTemperature()
   Locator::getDisplay()->drawRGBBitmap(55, 55, WEATHER_CLOUDY_SUN, 8, 8);
 }
 
-void Clockface::updateWeather() 
+void Clockface::updateWeatherData() 
+{
+  // This method only fetches weather data, doesn't update display
+  // The display will be updated by updateWeatherDisplay() which runs continuously
+  CWWeatherService::getInstance()->getCurrentWeather();
+}
+
+void Clockface::updateWeatherDisplay() 
 {
   // Clear the area next to WiFi icon (from x=10 to x=64, y=55 to y=63)
   Locator::getDisplay()->fillRect(10, 55, 54, 8, 0x0000);

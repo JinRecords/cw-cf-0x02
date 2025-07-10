@@ -30,7 +30,8 @@ class Clockface: public IClockface {
     void updateTime();
     void updateDate();
     void updateTemperature();
-    void updateWeather();
+    void updateWeatherData();
+    void updateWeatherDisplay();
     void scrollText(const String& text, int x, int y, int maxWidth);
 
   public:
