@@ -10,11 +10,6 @@
 #include <ImageUtils.h>
 #include <WiFi.h>
 
-#include "hour8pt7b.h"
-#include "minute7pt7b.h"
-#include "small4pt7b.h"
-#include "DateI18nEN.h"
-
 // Commons
 #include "IClockface.h"
 #include "Icons.h"
@@ -26,13 +21,12 @@ class Clockface: public IClockface {
   private:
     Adafruit_GFX* _display;
     CWDateTime* _dateTime;
-    void timeInWords(int h, int m, char* hWords, char* mWords);
-    void updateTime();
-    void updateDate();
-    void updateTemperature();
     void updateWeatherData();
     void updateWeatherDisplay();
     void scrollText(const String& text, int x, int y, int maxWidth);
+    void drawSecond(uint8_t second, uint16_t color);
+    void drawMinute(uint8_t minute, uint16_t color);
+    void drawHour(uint8_t hour, uint8_t minute, uint16_t color);
 
   public:
     Clockface(Adafruit_GFX* display);
