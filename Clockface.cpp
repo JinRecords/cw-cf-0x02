@@ -36,15 +36,15 @@ void Clockface::update()
 
     if (weather.status == WEATHER_OK && weather.isValid) {
         if (weather.condition == "clear") {
-            color = 0xFFB347; // Bright, warm sunny tones
+            color = 0xFDA8; // Bright, warm sunny tones
         } else if (weather.condition == "clouds") {
-            color = 0xB0E0E6; // Striking cloudy blue tones
+            color = 0xB71C; // Striking cloudy blue tones
         } else if (weather.condition == "rain") {
-            color = 0x5F9EA0; // Vibrant rain blue tones
+            color = 0x5EF4; // Vibrant rain blue tones
         } else if (weather.condition == "snow") {
-            color = 0xFFFAFA; // Crisp and bright snow tones
+            color = 0xFFDF; // Crisp and bright snow tones
         } else {
-            color = 0x87CEEB; // Default blue sky
+            color = 0x867D; // Default blue sky
         }
     }
 

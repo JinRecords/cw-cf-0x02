@@ -15,7 +15,7 @@
 #include "Icons.h"
 #include "CWWeatherService.h"
 #include "WeatherIcons.h"
-
+#include "small4pt7b.h"
 
 class Clockface: public IClockface {
   private:
