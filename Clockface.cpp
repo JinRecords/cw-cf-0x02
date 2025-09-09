@@ -1,14 +1,26 @@
-
 #include "Clockface.h"
-
-const char* FORMAT_TWO_DIGITS = "%02d";
+#include "ColorUtil.h"
 
 EventBus eventBus;
 
-unsigned long lastMillis = 0;
 unsigned long lastWeatherUpdate = 0;
-unsigned long lastScrollUpdate = 0;
-int scrollOffset = 0;
+
+// Helper function to draw a conic gradient circle
+void drawConicGradientCircle(Adafruit_GFX* display, int16_t x, int16_t y, uint16_t radius, float angle, uint16_t startColor, uint16_t endColor) {
+    for (int i = 0; i < 360; i += 5) { // Increment by 5 degrees for performance
+        float rad1 = radians(i + angle);
+        float rad2 = radians(i + 5 + angle);
+        
+        int16_t x1 = x + radius * cos(rad1);
+        int16_t y1 = y + radius * sin(rad1);
+        int16_t x2 = x + radius * cos(rad2);
+        int16_t y2 = y + radius * sin(rad2);
+
+        uint16_t color = ColorUtil::interpolate(startColor, endColor, i / 360.0);
+        
+        display->drawLine(x, y, x1, y1, color);
+    }
+}
 
 Clockface::Clockface(Adafruit_GFX* display)
 {
@@ -24,184 +36,76 @@ void Clockface::setup(CWDateTime *dateTime) {
   Locator::getDisplay()->fillRect(0, 0, 64, 64, 0x0000);  
 }
 
-
 void Clockface::update() 
 {  
-  if (millis() - lastMillis >= 1000) {
-
-    Locator::getDisplay()->fillRect(0, 0, 64, 64, 0x0000);
-
-    WeatherData weather = CWWeatherService::getInstance()->getCurrentWeather();
-    uint16_t color = 0xFFFF;
-
-    if (weather.status == WEATHER_OK && weather.isValid) {
-        if (weather.condition == "clear") {
-            color = 0xFDA8; // Bright, warm sunny tones
-        } else if (weather.condition == "clouds") {
-            color = 0xB71C; // Striking cloudy blue tones
-        } else if (weather.condition == "rain") {
-            color = 0x5EF4; // Vibrant rain blue tones
-        } else if (weather.condition == "snow") {
-            color = 0xFFDF; // Crisp and bright snow tones
-        } else {
-            color = 0x867D; // Default blue sky
-        }
-    }
-
-    drawHour(_dateTime->getHour(), _dateTime->getMinute(), color);
-    drawMinute(_dateTime->getMinute(), color);
-    drawSecond(_dateTime->getSecond(), color);
-
     // Update weather data every 5 minutes
     if (millis() - lastWeatherUpdate >= 300000) {
       updateWeatherData();
       lastWeatherUpdate = millis();
     }
-    
-    // Update weather display continuously for smooth scrolling
-    updateWeatherDisplay();
-    
-    lastMillis = millis();
-  }  
+
+    WeatherData weather = CWWeatherService::getInstance()->getCurrentWeather();
+
+    // Default to a generic palette
+    uint16_t bgColor = 0x1082;
+    uint16_t secStartColor = 0x2104, secEndColor = 0x4208;
+    uint16_t minStartColor = 0x630C, minEndColor = 0x8410;
+    uint16_t hourStartColor = 0xA514, hourEndColor = 0xC618;
+
+    if (weather.status == WEATHER_OK && weather.isValid) {
+        if (weather.condition == "clear") { // Sunny
+            bgColor = 0xFFF0; // Light yellow
+            secStartColor = 0xFFE0; // Yellow
+            secEndColor = 0xFD20;   // Light Orange
+            minStartColor = 0xFC00; // Orange
+            minEndColor = 0xFA00;   // Dark Orange
+            hourStartColor = 0xF800; // Red
+            hourEndColor = 0xA800;   // Dark Red
+        } else if (weather.condition == "rain" || weather.condition == "drizzle") {
+            bgColor = 0xAEFF; // Very light blue
+            secStartColor = 0x001F; // Dark Blue
+            secEndColor = 0x001A;   // Slightly Darker Blue
+            minStartColor = 0x001F; // Dark Blue
+            minEndColor = 0x0010;   // Very Dark Blue
+            hourStartColor = 0x801F; // Purple
+            hourEndColor = 0x401A;   // Dark Purple
+        } else if (weather.condition == "clouds" || weather.condition == "overcast" || weather.condition == "fog") {
+            bgColor = 0x8410; // Light Grey
+            secStartColor = 0xFFFF; // White
+            secEndColor = 0xC618;   // Grey
+            minStartColor = 0xC618; // Grey
+            minEndColor = 0x630C;   // Dark Grey
+            hourStartColor = 0x4208; // Darker Grey
+            hourEndColor = 0x2104;   // Even Darker Grey
+        }
+    }
+
+    // Draw background noise
+    for (int i = 0; i < 20; i++) {
+        _display->drawPixel(random(64), random(64), ColorUtil::interpolate(bgColor, 0x0000, random(100) / 100.0));
+    }
+
+    drawSecond(_dateTime->getSecond(), secStartColor, secEndColor);
+    drawMinute(_dateTime->getMinute(), minStartColor, minEndColor);
+    drawHour(_dateTime->getHour(), _dateTime->getMinute(), hourStartColor, hourEndColor);
 }
 
-void Clockface::drawHour(uint8_t hour, uint8_t minute, uint16_t color) {
-    float hour_angle = (hour % 12 + minute / 60.0) / 12.0 * 2 * PI;
-    int16_t x = 32 + 10 * cos(hour_angle - PI / 2);
-    int16_t y = 32 + 10 * sin(hour_angle - PI / 2);
-    Locator::getDisplay()->fillCircle(x, y, 12, color);
+void Clockface::drawHour(uint8_t hour, uint8_t minute, uint16_t startColor, uint16_t endColor) {
+    float hour_angle = (hour % 12 + minute / 60.0) / 12.0 * 360;
+    drawConicGradientCircle(_display, 32, 32, 12, hour_angle, startColor, endColor);
 }
 
-void Clockface::drawMinute(uint8_t minute, uint16_t color) {
-    float minute_angle = (minute / 60.0) * 2 * PI;
-    int16_t x = 32 + 16 * cos(minute_angle - PI / 2);
-    int16_t y = 32 + 16 * sin(minute_angle - PI / 2);
-    Locator::getDisplay()->fillCircle(x, y, 10, color);
+void Clockface::drawMinute(uint8_t minute, uint16_t startColor, uint16_t endColor) {
+    float minute_angle = (minute / 60.0) * 360;
+    drawConicGradientCircle(_display, 32, 32, 22, minute_angle, startColor, endColor);
 }
 
-void Clockface::drawSecond(uint8_t second, uint16_t color) {
-    float second_angle = (second / 60.0) * 2 * PI;
-    int16_t x = 32 + 22 * cos(second_angle - PI / 2);
-    int16_t y = 32 + 22 * sin(second_angle - PI / 2);
-    Locator::getDisplay()->fillCircle(x, y, 8, color);
+void Clockface::drawSecond(uint8_t second, uint16_t startColor, uint16_t endColor) {
+    float second_angle = (second / 60.0) * 360;
+    drawConicGradientCircle(_display, 32, 32, 30, second_angle, startColor, endColor);
 }
 
 void Clockface::updateWeatherData() 
 {
-  // This method only fetches weather data, doesn't update display
-  // The display will be updated by updateWeatherDisplay() which runs continuously
   CWWeatherService::getInstance()->getCurrentWeather();
-}
-
-void Clockface::updateWeatherDisplay() 
-{
-  // Clear the area next to WiFi icon (from x=10 to x=64, y=55 to y=63)
-  Locator::getDisplay()->fillRect(10, 55, 54, 8, 0x0000);
-  
-  WeatherData weather = CWWeatherService::getInstance()->getCurrentWeather();
-  
-  // Determine what to display based on weather status
-  String displayText = "";
-  const unsigned short* weatherIcon = nullptr;
-  
-  switch (weather.status) {
-    case WEATHER_OK:
-      if (weather.isValid && !weather.condition.isEmpty()) {
-        displayText = weather.condition;
-        
-        // Set weather icon based on condition
-        if (weather.condition == "clear") {
-          weatherIcon = WEATHER_CLEAR;
-        } else if (weather.condition == "cloudy" || weather.condition == "partly" || weather.condition == "overcast") {
-          weatherIcon = WEATHER_CLOUDY;
-        } else if (weather.condition == "rain" || weather.condition == "drizzle") {
-          weatherIcon = WEATHER_RAIN;
-        } else if (weather.condition == "thunder") {
-          weatherIcon = WEATHER_THUNDER;
-        } else if (weather.condition == "snow") {
-          weatherIcon = WEATHER_SNOW;
-        } else if (weather.condition == "fog") {
-          weatherIcon = WEATHER_FOG;
-        }
-      }
-      break;
-      
-    case WEATHER_CONNECTING:
-      displayText = "...";
-      weatherIcon = WEATHER_CLOUDY; // Use cloudy icon as placeholder
-      break;
-      
-    case WEATHER_ERROR:
-    default:
-      // Check if we're still in startup retry mode
-      static unsigned long lastErrorCheck = 0;
-      if (millis() - lastErrorCheck >= 1000) { // Check every second
-        lastErrorCheck = millis();
-        // The weather service will handle retries internally
-        // We just show "error" until it succeeds
-      }
-      displayText = "error";
-      weatherIcon = WEATHER_CLOUDY; // Use cloudy icon as placeholder
-      break;
-  }
-  
-  // Display weather icon
-  if (weatherIcon) {
-    Locator::getDisplay()->drawRGBBitmap(10, 55, weatherIcon, 8, 8);
-  }
-  
-  // Display weather text with scrolling if needed
-  if (!displayText.isEmpty()) {
-    scrollText(displayText, 20, 62, 44); // 44 pixels max width (64 - 20)
-  }
-}
-
-void Clockface::scrollText(const String& text, int x, int y, int maxWidth) {
-  Locator::getDisplay()->setFont(&small4pt7b);
-  Locator::getDisplay()->setTextColor(0xffff);
-  
-  // Calculate text width
-  uint16_t textWidth, h = 0;
-  int16_t x1, y1 = 0;
-  Locator::getDisplay()->getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &h);
-  
-  // If text fits within maxWidth, display normally
-  if (textWidth <= maxWidth) {
-    Locator::getDisplay()->setCursor(x, y);
-    Locator::getDisplay()->print(text);
-    scrollOffset = 0; // Reset scroll offset
-    return;
-  }
-  
-  // Text is too long, implement scrolling
-  if (millis() - lastScrollUpdate >= 300) { // Scroll every 300ms for better readability
-    scrollOffset++;
-    if (scrollOffset > text.length() + 5) { // Add some padding and pause at end
-      scrollOffset = 0;
-    }
-    lastScrollUpdate = millis();
-  }
-  
-  // Clear the text area
-  Locator::getDisplay()->fillRect(x, y - h, maxWidth, h, 0x0000);
-  
-  // Calculate which part of the text to show
-  String displayText = text;
-  
-  // Show first 5 characters immediately, then scroll from there
-  if (scrollOffset == 0) {
-    // Show first 5 characters
-    displayText = text.substring(0, min(5, (int)text.length()));
-  } else if (scrollOffset > 0) {
-    if (scrollOffset < text.length()) {
-      displayText = text.substring(scrollOffset);
-    } else {
-      // Show beginning of text when we reach the end
-      displayText = text.substring(0, scrollOffset - text.length());
-    }
-  }
-  
-  // Display the text
-  Locator::getDisplay()->setCursor(x, y);
-  Locator::getDisplay()->print(displayText);
 }

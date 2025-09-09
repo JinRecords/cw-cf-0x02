@@ -22,11 +22,9 @@ class Clockface: public IClockface {
     Adafruit_GFX* _display;
     CWDateTime* _dateTime;
     void updateWeatherData();
-    void updateWeatherDisplay();
-    void scrollText(const String& text, int x, int y, int maxWidth);
-    void drawSecond(uint8_t second, uint16_t color);
-    void drawMinute(uint8_t minute, uint16_t color);
-    void drawHour(uint8_t hour, uint8_t minute, uint16_t color);
+        void drawHour(uint8_t hour, uint8_t minute, uint16_t startColor, uint16_t endColor);
+    void drawMinute(uint8_t minute, uint16_t startColor, uint16_t endColor);
+    void drawSecond(uint8_t second, uint16_t startColor, uint16_t endColor);
 
   public:
     Clockface(Adafruit_GFX* display);
