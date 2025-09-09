@@ -8,9 +8,10 @@ if(CONFIG_CLOCKFACE_TIME_IN_WORDS)
   list(APPEND SRC_DIRS ".")
 endif()
 
+project(cw-cf-0x02)
+
 idf_component_register(
                        INCLUDE_DIRS ${INCLUDE_DIRS}
                        SRC_DIRS ${SRC_DIRS}
                        REQUIRES arduino Adafruit-GFX-Library cw-gfx-engine cw-commons ArduinoJson
                        )
-project(cw-cf-0x02)
